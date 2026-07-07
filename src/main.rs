@@ -20,21 +20,15 @@ const HEIGHT: u32 = 30;
 
 const WAIT_TIME: u64 = 100;
 
-const ALIVE_CELL: &str = "O";
-const NOT_ALIVE_CELL: &str = ".";
-
-impl fmt::Display for Cell {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Cell({0})", self.is_alive)
-    }
-}
+const ALIVE_CELL: char = 'O';
+const DEAD_CELL: char = '.';
 
 fn display_cells(cells: &HashMap<(u32, u32), Cell>) {
     let mut output = String::with_capacity((WEIGHT * HEIGHT + HEIGHT) as usize);
     for y in 0..HEIGHT {
         for x in 0..WEIGHT {
             let cell = cells.get(&(x, y)).unwrap();
-            output.push(if cell.is_alive { 'O' } else { '.' });
+            output.push(if cell.is_alive { ALIVE_CELL } else { DEAD_CELL });
         }
         output.push('\n');
     }
@@ -75,15 +69,6 @@ fn update_cells(cells: HashMap<(u32, u32), Cell>) -> HashMap<(u32, u32), Cell> {
                 }
             }
 
-            // if x == 0 && y == 0 {
-            //     println!("neighbors_number: {}", neighbors_number)
-            // }
-
-            // print!("{}", match cell.is_alive {
-            //     true => ALIVE_CELL,
-            //     false => NOT_ALIVE_CELL,
-            //
-            // } );
             if cell.is_alive && (neighbors_number == 2 || neighbors_number == 3) {
                 new_cells.insert((x, y), Cell::new(true));
             } else if !cell.is_alive && neighbors_number == 3 {
