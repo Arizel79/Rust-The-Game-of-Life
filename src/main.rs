@@ -1,6 +1,5 @@
 use rand::RngExt;
 use std::collections::HashMap;
-use std::fmt;
 use std::thread;
 use std::time::Duration;
 
@@ -29,15 +28,14 @@ fn update_cells(cells: HashMap<(u32, u32), bool>) -> HashMap<(u32, u32), bool> {
 
     for y in 0..HEIGHT {
         for x in 0..WEIGHT {
-            let option_cell: Option<&bool> = cells.get(&(x, y));
-            let cell: &bool = option_cell.unwrap();
+            let cell = *cells.get(&(x, y)).unwrap();
 
             let left_x = (x + WEIGHT - 1) % WEIGHT;
             let right_x = (x + 1) % WEIGHT;
             let above_y = (y + HEIGHT - 1) % HEIGHT;
             let below_y = (y + 1) % HEIGHT;
 
-            let neighbors_variant = [
+            let neighbors = [
                 (left_x, above_y),
                 (x, above_y),
                 (right_x, above_y),
@@ -48,23 +46,14 @@ fn update_cells(cells: HashMap<(u32, u32), bool>) -> HashMap<(u32, u32), bool> {
                 (right_x, below_y),
             ];
 
-            let mut neighbors_number: u8 = 0;
+            let neighbors_number = neighbors
+                .iter()
+                .filter(|&pos| *cells.get(pos).unwrap_or(&false))
+                .count() as u8;
 
-            for i in &neighbors_variant {
-                if let Some(cell) = cells.get(&i) {
-                    if *cell {
-                        neighbors_number += 1;
-                    }
-                }
-            }
+            let alive = neighbors_number == 3 || (cell && neighbors_number == 2);
 
-            if *cell && (neighbors_number == 2 || neighbors_number == 3) {
-                new_cells.insert((x, y), true);
-            } else if !*cell && neighbors_number == 3 {
-                new_cells.insert((x, y), true);
-            } else {
-                new_cells.insert((x, y), false);
-            }
+            new_cells.insert((x, y), alive);
         }
     }
     new_cells
@@ -80,9 +69,11 @@ fn generate_cells() -> HashMap<(u32, u32), bool> {
     }
     cells
 }
+
 fn clear_terminal() {
     print!("{}[2J", 27 as char);
 }
+
 fn main() {
     let mut cells = generate_cells();
 
