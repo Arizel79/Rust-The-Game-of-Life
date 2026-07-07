@@ -1,36 +1,121 @@
-use std::fmt;
 use rand::RngExt;
+use std::collections::HashMap;
+use std::fmt;
+use std::thread;
+use std::time::Duration;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Cell {
     is_alive: bool,
-    x: u32,
-    y: u32,
 }
 
 impl Cell {
-    fn new(is_alive: bool, x: u32, y: u32) -> Cell {
-        Cell { is_alive, x, y }
+    fn new(is_alive: bool) -> Cell {
+        Cell { is_alive }
     }
 }
+
+const WEIGHT: u32 = 100;
+const HEIGHT: u32 = 30;
+
+const WAIT_TIME: u64 = 100;
+
+const ALIVE_CELL: &str = "O";
+const NOT_ALIVE_CELL: &str = ".";
 
 impl fmt::Display for Cell {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "Cell({0}, ({1}, {2}))", self.is_alive, self.x, self.y)
+        write!(f, "Cell({0})", self.is_alive)
+    }
 }
-}
-fn main() {
-    let (weight, height): (u32, u32) = (10, 10);
-    let mut cells: Vec<Cell> = vec![];
-    let mut rng = rand::rng();
 
-    for x in 0..10 {
-        for y in 0..10 {
-            cells.push(Cell::new(rng.random_bool(0.25), x, y,));
+fn display_cells(cells: &HashMap<(u32, u32), Cell>) {
+    let mut output = String::with_capacity((WEIGHT * HEIGHT + HEIGHT) as usize);
+    for y in 0..HEIGHT {
+        for x in 0..WEIGHT {
+            let cell = cells.get(&(x, y)).unwrap();
+            output.push(if cell.is_alive { 'O' } else { '.' });
+        }
+        output.push('\n');
+    }
+    print!("{}", output);
+}
+
+fn update_cells(cells: HashMap<(u32, u32), Cell>) -> HashMap<(u32, u32), Cell> {
+    let mut new_cells: HashMap<(u32, u32), Cell> = HashMap::new();
+
+    for y in 0..HEIGHT {
+        for x in 0..WEIGHT {
+            let option_cell: Option<&Cell> = cells.get(&(x, y));
+            let cell: &Cell = option_cell.unwrap();
+
+            let left_x = (x + WEIGHT - 1) % WEIGHT;
+            let right_x = (x + 1) % WEIGHT;
+            let above_y = (y + HEIGHT - 1) % HEIGHT;
+            let below_y = (y + 1) % HEIGHT;
+
+            let neighbors_variant = [
+                (left_x, above_y),
+                (x, above_y),
+                (right_x, above_y),
+                (left_x, y),
+                (right_x, y),
+                (left_x, below_y),
+                (x, below_y),
+                (right_x, below_y),
+            ];
+
+            let mut neighbors_number: u8 = 0;
+
+            for i in &neighbors_variant {
+                if let Some(cell) = cells.get(&i) {
+                    if cell.is_alive {
+                        neighbors_number += 1;
+                    }
+                }
+            }
+
+            // if x == 0 && y == 0 {
+            //     println!("neighbors_number: {}", neighbors_number)
+            // }
+
+            // print!("{}", match cell.is_alive {
+            //     true => ALIVE_CELL,
+            //     false => NOT_ALIVE_CELL,
+            //
+            // } );
+            if cell.is_alive && (neighbors_number == 2 || neighbors_number == 3) {
+                new_cells.insert((x, y), Cell::new(true));
+            } else if !cell.is_alive && neighbors_number == 3 {
+                new_cells.insert((x, y), Cell::new(true));
+            } else {
+                new_cells.insert((x, y), Cell::new(false));
+            }
         }
     }
+    new_cells
+}
 
-    for i in cells.iter() {
-        println!("{i}");
+fn generate_cells() -> HashMap<(u32, u32), Cell> {
+    let mut rng = rand::rng();
+    let mut cells: HashMap<(u32, u32), Cell> = HashMap::new();
+    for x in 0..WEIGHT {
+        for y in 0..HEIGHT {
+            cells.insert((x, y), Cell::new(rng.random_bool(0.5)));
+        }
+    }
+    cells
+}
+fn clear_terminal() {
+    print!("{}[2J", 27 as char);
+}
+fn main() {
+    let mut cells = generate_cells();
+
+    loop {
+        clear_terminal();
+        display_cells(&cells);
+        thread::sleep(Duration::from_millis(WAIT_TIME));
+        cells = update_cells(cells);
     }
 }
